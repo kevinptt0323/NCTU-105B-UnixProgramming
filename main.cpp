@@ -65,6 +65,27 @@ ostream& operator<<(ostream& out, const Connection& conn) {
 	return out << oss.str();
 }
 
+void show_tcp() {
+	cout << "List of TCP connections:" << endl;
+	cout << setw(5)  << left << "Proto" << " "
+		 << setw(23) << left << "Local Address" << " "
+		 << setw(23) << left << "Remote Address" << " "
+		 << setw(30) << left << "PID/Program name and arguments"
+		 << endl;
+	auto tcp_conn = parse(TCP_FILE);
+	for(const auto& conn: tcp_conn) {
+		cout << setw(5) << left << "tcp" << " " << conn << endl;
+	}
+}
+
+void show_udp() {
+	cout << "List of UDP connections:" << endl;
+	auto udp_conn = parse(UDP_FILE);
+	for(const auto& conn: udp_conn) {
+		cout << setw(5) << left << "udp " << " " << conn << endl;
+	}
+}
+
 int main() {
 	{
 		inode2pid.clear();
@@ -76,14 +97,8 @@ int main() {
 				inode2pid[stat_buf.st_ino] = dir;
 		}
 	}
-	auto tcp_conn = parse(TCP_FILE);
-	for(const auto& conn: tcp_conn) {
-		cout << setw(5) << left << "tcp " << conn << endl;
-	}
-
-	auto udp_conn = parse(UDP_FILE);
-	for(const auto& conn: udp_conn) {
-		cout << setw(5) << left << "udp " << conn << endl;
-	}
+	show_tcp();
+	cout << endl;
+	show_udp();
 	return 0;
 }
