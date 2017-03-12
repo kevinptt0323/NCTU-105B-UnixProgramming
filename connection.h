@@ -2,6 +2,7 @@
 #define __CONNECTION_H__
 
 #include <iostream>
+#include <sstream>
 using namespace std;
 
 union IP {
@@ -10,11 +11,12 @@ union IP {
 };
 
 ostream& operator<<(ostream& out, const IP& ip) {
-	out << (int)ip.digit[0] << "."
+	ostringstream oss;
+	oss << (int)ip.digit[0] << "."
 		<< (int)ip.digit[1] << "."
 		<< (int)ip.digit[2] << "."
 		<< (int)ip.digit[3];
-	return out;
+	return out << oss.str();
 }
 
 struct Address {
@@ -23,14 +25,16 @@ struct Address {
 };
 
 ostream& operator<<(ostream& out, const Address& addr) {
-	out << addr.ip << ":";
-	if (addr.port==0) out << "*";
-	else out << addr.port;
-	return out;
+	ostringstream oss;
+	oss << addr.ip << ":";
+	if (addr.port==0) oss << "*";
+	else oss << addr.port;
+	return out << oss.str();
 }
 
 struct Connection {
 	Address local, remote;
+	int inode;
 };
 
 #endif
