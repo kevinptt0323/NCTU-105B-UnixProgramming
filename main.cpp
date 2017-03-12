@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <regex>
 #include "connection.h"
 using namespace std;
 
@@ -116,7 +117,7 @@ string get_cmd(string pid) {
 }
 
 bool match(const char* str, const char* pat) {
-	return strstr(str, pat)!=NULL;
+	return regex_search(str, regex(pat));
 }
 
 ostream& operator<<(ostream& out, const Connection& conn) {
