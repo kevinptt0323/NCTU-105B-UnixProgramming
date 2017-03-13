@@ -39,10 +39,9 @@ void transform_endian(char* s) {
 }
 
 __uint128_t atolll(const char* s) {
-	__uint128_t v = 0;
-	for(int i=0; (s[i]>='0' && s[i]<='9') || (tolower(s[i])>='a'&&tolower(s[i])<='f'); i++)
-		v = (v<<4) + (s[i]>='0'&&s[i]<='9' ? s[i]-48 : tolower(s[i])-'a'+10);
-	return v;
+	unsigned long long v1, v2;
+	sscanf(s, "%16llx%16llx", &v1, &v2);
+	return ((__uint128_t)v1<<64) | v2;
 }
 
 vector<Connection> parse(const char* filename, const int& type = 4) {
@@ -54,7 +53,7 @@ vector<Connection> parse(const char* filename, const int& type = 4) {
 	fgets(buffer, 1023, fin);
 	while (fgets(buffer, 1023, fin)) {
 		Connection conn;
-		sscanf(buffer, "%*d: %s %s %*s %*s %*s %*s %*s %*s %d", local_addr, remote_addr, &conn.inode);
+		sscanf(buffer, "%*s %s %s %*s %*s %*s %*s %*s %*s %d", local_addr, remote_addr, &conn.inode);
 		if (type==4) {
 			sscanf(local_addr, "%x:%hx", &conn.local.ip.v4.raw, &conn.local.port);
 			sscanf(remote_addr, "%x:%hx", &conn.remote.ip.v4.raw, &conn.remote.port);
