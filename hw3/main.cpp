@@ -41,12 +41,12 @@ vector<command> parse(char* cmd) {
 pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<int,2>>& pipes_fd) {
 	pid_t pid = fork();
 	if (pid < 0) {
-		error("can't fork");
+		error("%s", strerror(errno));
 	} else if (pid == 0) {
 		if (argv0.redirect_in != "") {
 			int fd = open(argv0.redirect_in.c_str(), O_RDONLY);
 			if (fd == -1) {
-				error("no such file or directory: %s", argv0.redirect_in.c_str());
+				error("%s: %s", strerror(errno), argv0.redirect_in.c_str());
 			}
 			dup2(fd, STDIN_FILENO);
 			close(fd);
@@ -55,7 +55,7 @@ pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<i
 		if (argv0.redirect_out != "") {
 			int fd = open(argv0.redirect_out.c_str(), O_WRONLY | O_CREAT, 0644);
 			if (fd == -1) {
-				error("can't write such file: %s", argv0.redirect_out.c_str());
+				error("%s: %s", strerror(errno), argv0.redirect_out.c_str());
 			}
 			dup2(fd, STDOUT_FILENO);
 			close(fd);
@@ -86,7 +86,8 @@ int execute(const vector<command>& cmds) {
 	vector<array<int,2>> pipes_fd(cmds.size()-1);
 	for(auto& pipe_fd: pipes_fd) {
 		if (pipe(pipe_fd.data()) == -1) {
-			error("can't create pipe");
+			//error("can't create pipe");
+			error("%s", strerror(errno));
 		}
 	}
 
