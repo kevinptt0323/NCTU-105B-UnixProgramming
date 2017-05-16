@@ -4,11 +4,14 @@
 #include <array>
 #include <string>
 
+#include <fcntl.h>
 #include <unistd.h>
+
+#include "command.h"
 
 #define BUF_SIZE 1024
 #define error(STR, ...) \
-	fprintf(stderr, "%s: " STR "\n", SHELL_NAME, ##__VA_ARGS__); \
+	fprintf(stderr, "%s: " STR "\n", SHELL_NAME, ##__VA_ARGS__), \
 	exit(EXIT_FAILURE)
 
 const char* SHELL_NAME = "hw3sh";
@@ -24,30 +27,39 @@ void input_command(char* buf, int bufsize) {
 	buf[strlen(buf)-1] = '\0';
 }
 
-vector<vector<string>> parse(char* cmd) {
-	vector<vector<string>> cmds;
+vector<command> parse(char* cmd) {
+	vector<command> cmds;
 	char *tmp_cmd, *ptr1;
 	tmp_cmd = strtok_r(cmd, "|", &ptr1);
 	do {
-		cmds.resize(cmds.size()+1);
-		auto& vec = cmds.back();
-		char *argv, *ptr2;
-		argv = strtok_r(tmp_cmd, " ", &ptr2);
-		do vec.emplace_back(argv);
-		while ((argv = strtok_r(NULL, " ", &ptr2)));
+		cmds.emplace_back(tmp_cmd);
 	} while ((tmp_cmd = strtok_r(NULL, "|", &ptr1)));
 
 	return cmds;
 }
 
-pid_t create_process(const vector<string>& argv0, int fd_in, int fd_out, vector<array<int,2>>& pipes_fd) {
+pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<int,2>>& pipes_fd) {
 	pid_t pid = fork();
-	if (pid<0) {
+	if (pid < 0) {
 		error("can't fork");
-	} else if (pid==0) {
-		if (fd_in != STDIN_FILENO)
+	} else if (pid == 0) {
+		if (argv0.redirect_in != "") {
+			int fd = open(argv0.redirect_in.c_str(), O_RDONLY);
+			if (fd == -1) {
+				error("no such file or directory: %s", argv0.redirect_in.c_str());
+			}
+			dup2(fd, STDIN_FILENO);
+			close(fd);
+		} else if (fd_in != STDIN_FILENO)
 			dup2(fd_in, STDIN_FILENO);
-		if (fd_out != STDOUT_FILENO)
+		if (argv0.redirect_out != "") {
+			int fd = open(argv0.redirect_out.c_str(), O_WRONLY | O_CREAT, 0644);
+			if (fd == -1) {
+				error("can't write such file: %s", argv0.redirect_out.c_str());
+			}
+			dup2(fd, STDOUT_FILENO);
+			close(fd);
+		} else if (fd_out != STDOUT_FILENO)
 			dup2(fd_out, STDOUT_FILENO);
 
 		for(auto& pipe_fd: pipes_fd) {
@@ -70,7 +82,7 @@ pid_t create_process(const vector<string>& argv0, int fd_in, int fd_out, vector<
 	}
 }
 
-int execute(const vector<vector<string>>& cmds) {
+int execute(const vector<command>& cmds) {
 	vector<array<int,2>> pipes_fd(cmds.size()-1);
 	for(auto& pipe_fd: pipes_fd) {
 		if (pipe(pipe_fd.data()) == -1) {
