@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "jobs.h"
+
 using std::string;
 using std::unordered_map;
 using std::vector;
@@ -26,6 +28,8 @@ struct builtin {
 };
 
 extern unordered_map<string, builtin> builtins;
+extern jobs joblist;
+extern int shell_pid, shell_pgid;
 
 void init_builtins();
 

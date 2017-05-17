@@ -8,8 +8,8 @@ void sigtstp_handler(int sig) {
 }
 
 void init_signal_handler() {
-	signal(SIGINT, sigint_handler);
-	signal(SIGTSTP, sigtstp_handler);
-	//signal(SIGTTOU, SIG_IGN);
-	//signal(SIGTTIN, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGTTIN, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
 }

@@ -1,7 +1,11 @@
-#include "builtin.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <unistd.h>
+#include <signal.h>
+
+#include "builtin.h"
+#include "jobs.h"
 
 #define add_builtin(name, ...) \
 	builtins[name] = builtin(name, __VA_ARGS__)
@@ -13,6 +17,10 @@ using std::unordered_map;
 using std::vector;
 
 unordered_map<string, builtin> builtins;
+
+jobs joblist;
+
+int shell_pid, shell_pgid;
 
 builtin::builtin() {
 	handler = NULL;
@@ -61,9 +69,28 @@ int bin_unset(UNUSED(const char *name), char *const argv[], UNUSED(const char *o
 	return unsetenv(argv[1]);
 }
 
+int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts), UNUSED(const int& func)) {
+	size_t job_num = 1;
+	if (argv[1])
+		sscanf(argv[1], "%%%lu", &job_num);
+	if (joblist.size()<job_num) {
+		return -1;
+	}
+	job &curr_job = joblist[job_num];
+	if (kill(curr_job.pid.back(), SIGCONT) == -1) {
+	}
+	tcsetpgrp(0, joblist[job_num].pgid);
+	joblist[job_num].waitpid(WUNTRACED);
+	tcsetpgrp(0, shell_pid);
+	return 0;
+}
+
 void init_builtins() {
+	shell_pid = getpid();
+	shell_pgid = getpgid(shell_pid);
 	add_builtin("exit", bin_break, "", 0);
 	add_builtin("export", bin_export, "", 0);
 	add_builtin("unset", bin_unset, "", 0);
+	add_builtin("fg", bin_fg, "", 0);
 }
 

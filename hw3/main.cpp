@@ -10,6 +10,7 @@
 #include "command.h"
 #include "builtin.h"
 #include "signal_handler.h"
+#include "jobs.h"
 
 #define BUF_SIZE 1024
 #define error(STR, ...) \
@@ -29,14 +30,19 @@ void input_command(char* buf, int bufsize) {
 	buf[strlen(buf)-1] = '\0';
 }
 
-vector<command> parse(char* cmd) {
-	vector<command> cmds;
-	char *tmp_cmd, *ptr1;
+job parse(char* cmd) {
+	job cmds;
+	cmds.background = false;
+	char *tmp_cmd, *ptr1, *ptr2;
+
 	tmp_cmd = strtok_r(cmd, "|", &ptr1);
 	do {
+		if ((ptr2 = strchr(tmp_cmd, '&'))) {
+			*ptr2 = ' ';
+			cmds.background = true;
+		}
 		cmds.emplace_back(tmp_cmd);
 	} while ((tmp_cmd = strtok_r(NULL, "|", &ptr1)));
-
 	return cmds;
 }
 
@@ -84,7 +90,7 @@ pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<i
 	return 0;
 }
 
-int execute(const vector<command>& cmds) {
+int execute(const job& cmds) {
 	vector<array<int,2>> pipes_fd(cmds.size()-1);
 	for(auto& pipe_fd: pipes_fd) {
 		if (pipe(pipe_fd.data()) == -1) {
@@ -93,14 +99,23 @@ int execute(const vector<command>& cmds) {
 		}
 	}
 
+	joblist.emplace_back(cmds);
+	job &curr_job = joblist.back();
+	curr_job.background = false;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
 		auto &argv = cmds[i];
 		if (builtins.find(argv[0]) != builtins.end()) {
 			builtins[argv[0]].exec(argv);
+			pid_t pid = 0;
+			curr_job.pid.emplace_back(pid);
 		} else {
-			create_process(cmds[i], fd_in, fd_out, pipes_fd);
+			pid_t pid = create_process(cmds[i], fd_in, fd_out, pipes_fd);
+			curr_job.pid.emplace_back(pid);
+			if (i==0)
+				curr_job.pgid = pid;
+			setpgid(pid, curr_job.pgid);
 		}
 	}
 
@@ -109,9 +124,9 @@ int execute(const vector<command>& cmds) {
 		close(pipe_fd[1]);
 	}
 
-	for(size_t i=0; i<cmds.size(); i++) {
-		wait(NULL);
-	}
+	tcsetpgrp(0, curr_job.pgid);
+	curr_job.waitpid(WUNTRACED);
+	tcsetpgrp(0, shell_pgid);
 
 	//printf("execute: %s\n", cmd);
 	return 0;
@@ -120,6 +135,7 @@ int execute(const vector<command>& cmds) {
 int main() {
 	char prompt[] = "hw3sh> ";
 	char buf[BUF_SIZE+1];
+
 	init_builtins();
 	init_signal_handler();
 	while (1) {
