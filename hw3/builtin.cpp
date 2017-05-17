@@ -48,7 +48,22 @@ int bin_break(UNUSED(const char *name), UNUSED(char *const argv[]), UNUSED(const
 	return 0;
 }
 
+int bin_export(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts), UNUSED(const int& func)) {
+	char key[strlen(argv[1])+1];
+	strcpy(key, argv[1]);
+	char *val = strchr(key, '=');
+	if (!val) return -1;
+	*(val++) = 0;
+	return setenv(key, val, 1);
+}
+
+int bin_unset(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts), UNUSED(const int& func)) {
+	return unsetenv(argv[1]);
+}
+
 void init_builtins() {
 	add_builtin("exit", bin_break, "", 0);
+	add_builtin("export", bin_export, "", 0);
+	add_builtin("unset", bin_unset, "", 0);
 }
 
