@@ -100,7 +100,6 @@ int execute(const job& cmds) {
 	}
 
 	job curr_job = cmds;
-	curr_job.background = false;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
@@ -125,10 +124,12 @@ int execute(const job& cmds) {
 
 	joblist.emplace_back(curr_job);
 
-	tcsetpgrp(0, curr_job.pgid);
-	if (curr_job.waitpid(WUNTRACED) == 0)
-		joblist.pop_back();
-	tcsetpgrp(0, shell_pgid);
+	if (!curr_job.background) {
+		tcsetpgrp(0, curr_job.pgid);
+		if (curr_job.waitpid(WUNTRACED) == 0)
+			joblist.pop_back();
+		tcsetpgrp(0, shell_pgid);
+	}
 
 	//printf("execute: %s\n", cmd);
 	return 0;
