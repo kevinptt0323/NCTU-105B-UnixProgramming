@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "command.h"
+#include "builtin.h"
 
 #define BUF_SIZE 1024
 #define error(STR, ...) \
@@ -67,10 +68,9 @@ pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<i
 			close(pipe_fd[1]);
 		}
 
-		char** argv = new char*[argv0.size()+1];
+		char* argv[argv0.size()+1];
 		for(size_t i=0; i<argv0.size(); i++) {
-			argv[i] = new char[argv0[i].size()+1];
-			strcpy(argv[i], argv0[i].c_str());
+			argv[i] = (char*)argv0[i].c_str();
 		}
 		argv[argv0.size()] = NULL;
 
@@ -94,7 +94,12 @@ int execute(const vector<command>& cmds) {
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
-		create_process(cmds[i], fd_in, fd_out, pipes_fd);
+		auto &argv = cmds[i];
+		if (builtins.find(argv[0]) != builtins.end()) {
+			builtins[argv[0]].exec(argv);
+		} else {
+			create_process(cmds[i], fd_in, fd_out, pipes_fd);
+		}
 	}
 
 	for(auto& pipe_fd: pipes_fd) {
@@ -113,6 +118,7 @@ int execute(const vector<command>& cmds) {
 int main() {
 	char prompt[] = "hw3sh> ";
 	char buf[BUF_SIZE+1];
+	init_builtins();
 	while (1) {
 		output_prompt(prompt);
 		input_command(buf, BUF_SIZE);
