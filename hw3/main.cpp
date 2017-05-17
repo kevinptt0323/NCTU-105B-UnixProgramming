@@ -99,8 +99,7 @@ int execute(const job& cmds) {
 		}
 	}
 
-	joblist.emplace_back(cmds);
-	job &curr_job = joblist.back();
+	job curr_job = cmds;
 	curr_job.background = false;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
@@ -124,8 +123,11 @@ int execute(const job& cmds) {
 		close(pipe_fd[1]);
 	}
 
+	joblist.emplace_back(curr_job);
+
 	tcsetpgrp(0, curr_job.pgid);
-	curr_job.waitpid(WUNTRACED);
+	if (curr_job.waitpid(WUNTRACED) == 0)
+		joblist.pop_back();
 	tcsetpgrp(0, shell_pgid);
 
 	//printf("execute: %s\n", cmd);
@@ -136,8 +138,8 @@ int main() {
 	char prompt[] = "hw3sh> ";
 	char buf[BUF_SIZE+1];
 
-	init_builtins();
 	init_signal_handler();
+	init_builtins();
 	while (1) {
 		output_prompt(prompt);
 		input_command(buf, BUF_SIZE);

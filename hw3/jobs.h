@@ -12,7 +12,7 @@ using std::vector;
 struct job : vector<command> {
 	vector<pid_t> pid;
 	pid_t pgid;
-	void waitpid(int);
+	int waitpid(int);
 	bool background;
 };
 

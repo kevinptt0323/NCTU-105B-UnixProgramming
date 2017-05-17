@@ -76,12 +76,34 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	if (joblist.size()<job_num) {
 		return -1;
 	}
+	--job_num;
+
 	job &curr_job = joblist[job_num];
 	if (kill(curr_job.pid.back(), SIGCONT) == -1) {
 	}
 	tcsetpgrp(0, joblist[job_num].pgid);
-	joblist[job_num].waitpid(WUNTRACED);
+	if (joblist[job_num].waitpid(WUNTRACED) == 0) {
+		joblist.erase(joblist.begin()+job_num);
+	}
 	tcsetpgrp(0, shell_pid);
+	return 0;
+}
+
+int bin_jobs(UNUSED(const char *name), UNUSED(char *const argv[]), UNUSED(const char *opts), UNUSED(const int& func)) {
+	size_t idx = 0;
+	for(auto &curr_job: joblist) {
+		++idx;
+		printf("[%lu] ", idx);
+		for(size_t i=0; i<curr_job.size(); i++) {
+			for(auto &cmd: curr_job[i]) {
+				printf(" %s", cmd.c_str());
+			}
+			if (i != curr_job.size()-1) {
+				printf(" |");
+			}
+		}
+		puts("");
+	}
 	return 0;
 }
 
@@ -92,5 +114,6 @@ void init_builtins() {
 	add_builtin("export", bin_export, "", 0);
 	add_builtin("unset", bin_unset, "", 0);
 	add_builtin("fg", bin_fg, "", 0);
+	add_builtin("jobs", bin_jobs, "", 0);
 }
 
