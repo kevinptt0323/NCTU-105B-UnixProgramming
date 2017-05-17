@@ -9,6 +9,7 @@
 
 #include "command.h"
 #include "builtin.h"
+#include "signal_handler.h"
 
 #define BUF_SIZE 1024
 #define error(STR, ...) \
@@ -80,6 +81,7 @@ pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<i
 	} else {
 		return pid;
 	}
+	return 0;
 }
 
 int execute(const vector<command>& cmds) {
@@ -119,6 +121,7 @@ int main() {
 	char prompt[] = "hw3sh> ";
 	char buf[BUF_SIZE+1];
 	init_builtins();
+	init_signal_handler();
 	while (1) {
 		output_prompt(prompt);
 		input_command(buf, BUF_SIZE);
