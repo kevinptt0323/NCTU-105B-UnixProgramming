@@ -26,9 +26,12 @@ void output_prompt(const char* prompt) {
 	printf(prompt);
 }
 
-void input_command(char* buf, int bufsize) {
-	fgets(buf, bufsize, stdin);
+char* input_command(char* buf, int bufsize) {
+	char* ret = fgets(buf, bufsize, stdin);
+	if (!ret) return NULL;
 	buf[strlen(buf)-1] = '\0';
+	if (!strlen(buf)) return NULL;
+	return buf;
 }
 
 job parse(char* cmd) {
@@ -45,7 +48,11 @@ job parse(char* cmd) {
 			*ptr2 = ' ';
 			cmds.foreground = false;
 		}
-		cmds.emplace_back(tmp_cmd);
+		for(int i=0; tmp_cmd[i]; i++)
+			if (tmp_cmd[i]>32) {
+				cmds.emplace_back(tmp_cmd);
+				break;
+			}
 	} while ((tmp_cmd = strtok_r(NULL, "|", &ptr1)));
 	return cmds;
 }
@@ -95,6 +102,7 @@ pid_t create_process(const command& argv0, int fd_in, int fd_out, vector<array<i
 }
 
 int execute(const job& cmds) {
+	if (cmds.size()==0) return 1;
 	vector<array<int,2>> pipes_fd(cmds.size()-1);
 	for(auto& pipe_fd: pipes_fd) {
 		if (pipe(pipe_fd.data()) == -1) {
@@ -158,8 +166,8 @@ int main() {
 	init_builtins();
 	while (1) {
 		output_prompt(prompt);
-		input_command(buf, BUF_SIZE);
-		execute(parse(buf));
+		if (input_command(buf, BUF_SIZE))
+			execute(parse(buf));
 	}
 	return 0;
 }

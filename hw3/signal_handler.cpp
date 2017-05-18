@@ -14,7 +14,7 @@ void zombie_handler(int sig __attribute__((unused))) {
 }
 
 void init_signal_handler() {
-	signal(SIGINT, SIG_IGN);
+	signal(SIGINT,  SIG_IGN);
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);

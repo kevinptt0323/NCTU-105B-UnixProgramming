@@ -25,8 +25,6 @@ int job::waitpid(int options=0) {
 
 void jobs::done_job(jobs::iterator itr) {
 	size_t idx = itr-begin()+1;
-	printf("done_job: %lu\n", idx);
-	printf("%d\n", itr->foreground);
 	if (!itr->foreground) {
 		itr->done = true;
 		fprintf(stdout, "[%lu]\t", idx);
@@ -36,7 +34,6 @@ void jobs::done_job(jobs::iterator itr) {
 }
 
 void jobs::done_pid(pid_t pid) {
-	printf("done_pid: %d\n", pid);
 	for(auto itr=begin(); itr!=end(); ++itr) {
 		if (itr->pid.back() == pid) {
 			itr->running = false;
