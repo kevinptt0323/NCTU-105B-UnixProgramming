@@ -7,13 +7,16 @@
 
 #include "command.h"
 
+
 using std::vector;
 
 struct job : vector<command> {
 	vector<pid_t> pid;
 	pid_t pgid;
 	int waitpid(int);
-	bool background;
+	bool running;
+	bool foreground;
+	string cmd;
 };
 
 struct jobs : vector<job> {

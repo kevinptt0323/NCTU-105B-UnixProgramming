@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "command.h"
 #include "builtin.h"
@@ -32,14 +33,16 @@ void input_command(char* buf, int bufsize) {
 
 job parse(char* cmd) {
 	job cmds;
-	cmds.background = false;
+	cmds.running = true;
+	cmds.foreground = true;
+	cmds.cmd = cmd;
 	char *tmp_cmd, *ptr1, *ptr2;
 
 	tmp_cmd = strtok_r(cmd, "|", &ptr1);
 	do {
 		if ((ptr2 = strchr(tmp_cmd, '&'))) {
 			*ptr2 = ' ';
-			cmds.background = true;
+			cmds.foreground = false;
 		}
 		cmds.emplace_back(tmp_cmd);
 	} while ((tmp_cmd = strtok_r(NULL, "|", &ptr1)));
@@ -99,7 +102,7 @@ int execute(const job& cmds) {
 		}
 	}
 
-	job curr_job = cmds;
+	job new_job = cmds;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
@@ -107,28 +110,37 @@ int execute(const job& cmds) {
 		if (builtins.find(argv[0]) != builtins.end()) {
 			builtins[argv[0]].exec(argv);
 			pid_t pid = 0;
-			curr_job.pid.emplace_back(pid);
+			new_job.pid.emplace_back(pid);
 		} else {
 			pid_t pid = create_process(cmds[i], fd_in, fd_out, pipes_fd);
-			curr_job.pid.emplace_back(pid);
+			new_job.pid.emplace_back(pid);
 			if (i==0)
-				curr_job.pgid = pid;
-			setpgid(pid, curr_job.pgid);
+				new_job.pgid = pid;
+			setpgid(pid, new_job.pgid);
 		}
 	}
+	joblist.emplace_back(new_job);
 
 	for(auto& pipe_fd: pipes_fd) {
 		close(pipe_fd[0]);
 		close(pipe_fd[1]);
 	}
 
-	joblist.emplace_back(curr_job);
+	job &curr_job = joblist.back();
 
-	if (!curr_job.background) {
+	if (curr_job.foreground) {
 		tcsetpgrp(0, curr_job.pgid);
 		if (curr_job.waitpid(WUNTRACED) == 0)
 			joblist.pop_back();
 		tcsetpgrp(0, shell_pgid);
+	} else {
+		if (curr_job.size()>1) {
+			if (kill(curr_job.pid.back(), SIGSTOP) == -1)
+				return errno;
+		}
+		if (curr_job.waitpid(WUNTRACED) == 0) {
+			curr_job.running = false;
+		}
 	}
 
 	//printf("execute: %s\n", cmd);

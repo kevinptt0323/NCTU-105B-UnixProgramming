@@ -79,8 +79,7 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	--job_num;
 
 	job &curr_job = joblist[job_num];
-	if (kill(curr_job.pid.back(), SIGCONT) == -1) {
-	}
+	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
 	tcsetpgrp(0, joblist[job_num].pgid);
 	if (joblist[job_num].waitpid(WUNTRACED) == 0) {
 		joblist.erase(joblist.begin()+job_num);
@@ -89,20 +88,25 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	return 0;
 }
 
+int bin_bg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts), UNUSED(const int& func)) {
+	size_t job_num = 1;
+	if (argv[1])
+		sscanf(argv[1], "%%%lu", &job_num);
+	if (joblist.size()<job_num) {
+		return -1;
+	}
+	--job_num;
+
+	job &curr_job = joblist[job_num];
+	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
+	return 0;
+}
+
 int bin_jobs(UNUSED(const char *name), UNUSED(char *const argv[]), UNUSED(const char *opts), UNUSED(const int& func)) {
 	size_t idx = 0;
 	for(auto &curr_job: joblist) {
 		++idx;
-		printf("[%lu] ", idx);
-		for(size_t i=0; i<curr_job.size(); i++) {
-			for(auto &cmd: curr_job[i]) {
-				printf(" %s", cmd.c_str());
-			}
-			if (i != curr_job.size()-1) {
-				printf(" |");
-			}
-		}
-		puts("");
+		printf("[%lu]\t%s\t%s\n", idx, curr_job.running ? "running" : "suspended", curr_job.cmd.c_str());
 	}
 	return 0;
 }
@@ -114,6 +118,7 @@ void init_builtins() {
 	add_builtin("export", bin_export, "", 0);
 	add_builtin("unset", bin_unset, "", 0);
 	add_builtin("fg", bin_fg, "", 0);
+	add_builtin("bg", bin_bg, "", 0);
 	add_builtin("jobs", bin_jobs, "", 0);
 }
 
