@@ -33,8 +33,9 @@ void input_command(char* buf, int bufsize) {
 
 job parse(char* cmd) {
 	job cmds;
-	cmds.running = true;
+	cmds.running = false;
 	cmds.foreground = true;
+	cmds.done = false;
 	cmds.cmd = cmd;
 	char *tmp_cmd, *ptr1, *ptr2;
 
@@ -103,6 +104,7 @@ int execute(const job& cmds) {
 	}
 
 	job new_job = cmds;
+	new_job.running = true;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
@@ -134,13 +136,14 @@ int execute(const job& cmds) {
 			joblist.pop_back();
 		tcsetpgrp(0, shell_pgid);
 	} else {
+		joblist.print(joblist.size());
 		if (curr_job.size()>1) {
 			if (kill(curr_job.pid.back(), SIGSTOP) == -1)
 				return errno;
 		}
-		if (curr_job.waitpid(WUNTRACED) == 0) {
-			curr_job.running = false;
-		}
+		//if (curr_job.waitpid(0) == 0) {
+		//	curr_job.running = false;
+		//}
 	}
 
 	//printf("execute: %s\n", cmd);

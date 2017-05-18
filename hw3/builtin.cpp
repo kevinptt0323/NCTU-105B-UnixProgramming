@@ -78,11 +78,12 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	}
 	--job_num;
 
-	job &curr_job = joblist[job_num];
+	auto curr_job_itr = joblist.begin()+job_num;
+	job &curr_job = *curr_job_itr;
 	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
-	tcsetpgrp(0, joblist[job_num].pgid);
-	if (joblist[job_num].waitpid(WUNTRACED) == 0) {
-		joblist.erase(joblist.begin()+job_num);
+	tcsetpgrp(0, curr_job.pgid);
+	if (curr_job.waitpid(WUNTRACED) == 0) {
+		joblist.erase(curr_job_itr);
 	}
 	tcsetpgrp(0, shell_pid);
 	return 0;
@@ -97,8 +98,12 @@ int bin_bg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	}
 	--job_num;
 
-	job &curr_job = joblist[job_num];
+	auto curr_job_itr = joblist.begin()+job_num;
+	job &curr_job = *curr_job_itr;
 	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
+	if (curr_job.waitpid(WUNTRACED) == 0) {
+		curr_job.running = false;
+	}
 	return 0;
 }
 
@@ -106,7 +111,8 @@ int bin_jobs(UNUSED(const char *name), UNUSED(char *const argv[]), UNUSED(const 
 	size_t idx = 0;
 	for(auto &curr_job: joblist) {
 		++idx;
-		printf("[%lu]\t%s\t%s\n", idx, curr_job.running ? "running" : "suspended", curr_job.cmd.c_str());
+		fprintf(stdout, "[%lu]\t", idx);
+		curr_job.print(stdout);
 	}
 	return 0;
 }
