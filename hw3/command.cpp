@@ -9,7 +9,7 @@ command::command() {
 }
 
 command::command(const char* cmd) {
-	char *cmd1 = new char[strlen(cmd)+1];
+	char cmd1[strlen(cmd)+1];
 	strcpy(cmd1, cmd);
 	char *argv, *ptr;
 	argv = strtok_r(cmd1, " ", &ptr);

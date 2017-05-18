@@ -83,7 +83,7 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
 	tcsetpgrp(0, curr_job.pgid);
 	if (curr_job.waitpid(WUNTRACED) == 0) {
-		joblist.erase(curr_job_itr);
+		//joblist.erase(curr_job_itr);
 	}
 	tcsetpgrp(0, shell_pid);
 	return 0;
