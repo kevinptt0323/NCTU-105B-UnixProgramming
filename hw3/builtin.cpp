@@ -80,10 +80,11 @@ int bin_fg(UNUSED(const char *name), char *const argv[], UNUSED(const char *opts
 
 	auto curr_job_itr = joblist.begin()+job_num;
 	job &curr_job = *curr_job_itr;
+	pid_t pid = curr_job.pid.back();
 	if (kill(curr_job.pid.back(), SIGCONT) == -1) return errno;
 	tcsetpgrp(0, curr_job.pgid);
 	if (curr_job.waitpid(WUNTRACED) == 0) {
-		joblist.done_pid(curr_job.pid.back());
+		joblist.done_pid(pid);
 	}
 	tcsetpgrp(0, shell_pid);
 	return 0;
