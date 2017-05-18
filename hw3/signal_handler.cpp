@@ -5,7 +5,7 @@
 
 extern jobs joblist;
 
-void zombie_handler(int sig __attribute__((unused))) {
+void sigchld_handler(int sig __attribute__((unused))) {
 	pid_t pid;
 	int status;
 	while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
@@ -18,5 +18,5 @@ void init_signal_handler() {
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);
-	signal(SIGCHLD, zombie_handler);
+	signal(SIGCHLD, sigchld_handler);
 }

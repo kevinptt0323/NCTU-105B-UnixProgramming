@@ -113,7 +113,6 @@ int execute(const job& cmds) {
 
 	job new_job = cmds;
 	new_job.running = true;
-	bool builtin_cmd = false;
 	for(size_t i=0; i<cmds.size(); i++) {
 		int fd_in  = i==0 ? STDIN_FILENO : pipes_fd[i-1][0];
 		int fd_out = i==cmds.size()-1 ? STDOUT_FILENO : pipes_fd[i][1];
@@ -122,7 +121,6 @@ int execute(const job& cmds) {
 			builtins[argv[0]].exec(argv);
 			pid_t pid = 0;
 			new_job.pid.emplace_back(pid);
-			builtin_cmd = true;
 		} else {
 			pid_t pid = create_process(cmds[i], fd_in, fd_out, pipes_fd);
 			new_job.pid.emplace_back(pid);
@@ -143,9 +141,7 @@ int execute(const job& cmds) {
 	if (curr_job.foreground) {
 		tcsetpgrp(0, curr_job.pgid);
 		if (curr_job.waitpid(WUNTRACED) == 0) {
-			if (builtin_cmd) {
-				joblist.pop_back();
-			}
+			joblist.done_pid(new_job.pid.back());
 		}
 		tcsetpgrp(0, shell_pgid);
 	} else {
