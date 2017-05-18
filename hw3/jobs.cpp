@@ -1,4 +1,4 @@
-#include <signal.h>
+#include <sys/wait.h>
 #include "jobs.h"
 
 int job::waitpid(int options=0) {
