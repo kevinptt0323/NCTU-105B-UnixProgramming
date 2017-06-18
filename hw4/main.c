@@ -7,72 +7,71 @@ static int height;
 static int cx = 3;
 static int cy = 3;
 
-int start_connection(char* flag, char* arg) {
-	if (strcmp(flag, "-s") == 0) {
-		int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		struct sockaddr_in server, client;
+int start_server(char* arg) {
+	int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct sockaddr_in server, client;
 
-		server.sin_family = AF_INET;
-		server.sin_addr.s_addr = INADDR_ANY;
-		server.sin_port = htons(atoi(arg));
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons(atoi(arg));
 
-		if (bind(server_fd, (struct sockaddr *)&server, sizeof(struct sockaddr_in)) == -1) {
-			fprintf(stderr, "Could not binding socket\n");
+	if (bind(server_fd, (struct sockaddr *)&server, sizeof(struct sockaddr_in)) == -1) {
+		fprintf(stderr, "Could not binding socket\n");
+		return -1;
+	}
+
+	if (listen(server_fd, 128) == -1) {
+		fprintf(stderr, "Could not listen on socket\n");
+		return -1;
+	}
+
+	fprintf(stderr, "listen on %d\n", atoi(arg));
+
+	char buf[2048];
+	int buf_sz;
+	while(1) {
+		socklen_t client_len = sizeof(client);
+		int client_fd = accept(server_fd, (struct sockaddr *) &client, &client_len);
+
+		if (client_fd < 0) {
+			fprintf(stderr, "Could not establish new connection\n");
 			return -1;
 		}
 
-		if (listen(server_fd, 128) == -1) {
-			fprintf(stderr, "Could not listen on socket\n");
-			return -1;
-		}
+		return client_fd;
 
-		fprintf(stderr, "listen on %d\n", atoi(arg));
-
-		char buf[2048];
-		int buf_sz;
 		while(1) {
-			socklen_t client_len = sizeof(client);
-			int client_fd = accept(server_fd, (struct sockaddr *) &client, &client_len);
-
-			if (client_fd < 0) {
-				fprintf(stderr, "Could not establish new connection\n");
-				return -1;
-			}
-
-			return client_fd;
-
-			while(1) {
-				if ((buf_sz=recv(client_fd, buf, 2047, 0)) > 0) {
-					buf[buf_sz] = 0;
-					printf("recv: %s\n", buf);
-				}
+			if ((buf_sz=recv(client_fd, buf, 2047, 0)) > 0) {
+				buf[buf_sz] = 0;
+				printf("recv: %s\n", buf);
 			}
 		}
-	} else if (strcmp(flag, "-c") == 0) {
-		int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		struct sockaddr_in server;
-		char ip[20], port[10];
-		for(int i=0, i2=-1; arg[i]; ++i) {
-			if (arg[i]!=':') {
-				if (i2==-1) ip[i] = arg[i], ip[i+1] = 0;
-				else port[i2++] = arg[i], port[i2] = 0;
-			} else {
-				i2 = 0;
-			}
+	}
+}
+int start_client(char* arg) {
+	int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct sockaddr_in server;
+	char ip[20], port[10];
+	for(int i=0, i2=-1; arg[i]; ++i) {
+		if (arg[i]!=':') {
+			if (i2==-1) ip[i] = arg[i], ip[i+1] = 0;
+			else port[i2++] = arg[i], port[i2] = 0;
+		} else {
+			i2 = 0;
 		}
-		if (strcmp(ip, "localhost") == 0) strcpy(ip, "127.0.0.1");
+	}
+	if (strcmp(ip, "localhost") == 0) strcpy(ip, "127.0.0.1");
 
-		server.sin_family = AF_INET;
-		server.sin_addr.s_addr = inet_addr(ip);
-		server.sin_port = htons(atoi(port));
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = inet_addr(ip);
+	server.sin_port = htons(atoi(port));
 
-		if (connect(server_fd, (struct sockaddr *)&server, sizeof(struct sockaddr_in)) == -1) {
-			fprintf(stderr, "Could not connect to %s\n", arg);
-			return -1;
-		}
+	if (connect(server_fd, (struct sockaddr *)&server, sizeof(struct sockaddr_in)) == -1) {
+		fprintf(stderr, "Could not connect to %s\n", arg);
+		return -1;
+	}
 
-		return server_fd;
-	} else return -1;
+	return server_fd;
 }
 
 const int dx[] = {1, 0, -1, 0, 1, 1, -1, -1};
@@ -98,11 +97,19 @@ int
 main(int argc, char* argv[])
 {	
 	if (argc!=3) return 0;
-	int fd = start_connection(argv[1], argv[2]);
+	int fd, player;
+	if (strcmp(argv[1], "-s") == 0) {
+		fd = start_server(argv[2]);
+		player = PLAYER1;
+	} else if (strcmp(argv[1], "-c") == 0) {
+		fd = start_client(argv[2]);
+		player = PLAYER2;
+	}
 	if (fd<0) return 0;
 	printf("%d\n", fd);
-	close(fd);
-	return 0;
+
+	player = 0;
+
 	initscr();			// start curses mode 
 	getmaxyx(stdscr, height, width);// get screen size
 
