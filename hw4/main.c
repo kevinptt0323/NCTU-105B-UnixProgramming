@@ -5,8 +5,27 @@ static int height;
 static int cx = 3;
 static int cy = 3;
 
+const int dx[] = {1, 0, -1, 0, 1, 1, -1, -1};
+const int dy[] = {0, 1, 0, -1, 1, -1, -1, 1};
+
+void update_board(int _cx, int _cy, int player) {
+	if (board[_cy][_cx]) return;
+	for(int i=0; i<8; i++) {
+		for (int x=_cx+dx[i], y=_cy+dy[i]; x>=0 && x<BOARDSZ && y>=0 && y<BOARDSZ; x+=dx[i], y+=dy[i]) {
+			if (board[y][x] == 0) break;
+			else if (board[y][x] == player) {
+				for (int x2=_cx, y2=_cy; x2!=x || y2!=y; x2+=dx[i], y2+=dy[i]) {
+					board[y2][x2] = player;
+					draw_cursor(x2, y2, 1);
+				}
+				break;
+			}
+		}
+	}
+}
+
 int
-main()
+main(int argc, char* argv[])
 {	
 	initscr();			// start curses mode 
 	getmaxyx(stdscr, height, width);// get screen size
@@ -39,15 +58,13 @@ restart:
 
 		switch(ch) {
 		case ' ':
-			board[cy][cx] = PLAYER1;
-			draw_cursor(cx, cy, 1);
+			update_board(cx, cy, PLAYER1);
 			draw_score();
 			break;
 		case 0x0d:
 		case 0x0a:
 		case KEY_ENTER:
-			board[cy][cx] = PLAYER2;
-			draw_cursor(cx, cy, 1);
+			update_board(cx, cy, PLAYER2);
 			draw_score();
 			break;
 		case 'q':
