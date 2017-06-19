@@ -1,6 +1,7 @@
 #include "othello.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 static int width;
 static int height;
@@ -77,8 +78,23 @@ int start_client(char* arg) {
 const int dx[] = {1, 0, -1, 0, 1, 1, -1, -1};
 const int dy[] = {0, 1, 0, -1, 1, -1, -1, 1};
 
-void update_board(int _cx, int _cy, int player) {
-	if (board[_cy][_cx]) return;
+bool validate(int _cx, int _cy, int player) {
+	if (board[_cy][_cx]) return false;
+	for(int i=0; i<8; i++) {
+		int count = 0;
+		for (int x=_cx+dx[i], y=_cy+dy[i]; x>=0 && x<BOARDSZ && y>=0 && y<BOARDSZ; x+=dx[i], y+=dy[i]) {
+			if (board[y][x] == 0) break;
+			else if (board[y][x] == player) {
+				if (count>0) return true;
+				break;
+			} else count++;
+		}
+	}
+	return false;
+}
+
+bool update_board(int _cx, int _cy, int player) {
+	if (!validate(_cx, _cy, player)) return false;
 	for(int i=0; i<8; i++) {
 		for (int x=_cx+dx[i], y=_cy+dy[i]; x>=0 && x<BOARDSZ && y>=0 && y<BOARDSZ; x+=dx[i], y+=dy[i]) {
 			if (board[y][x] == 0) break;
@@ -93,6 +109,7 @@ void update_board(int _cx, int _cy, int player) {
 	}
 	draw_score();
 	draw_board();
+	return true;
 }
 
 int check_fd(int fd) {
@@ -124,6 +141,9 @@ main(int argc, char* argv[])
 	}
 	if (fd<0) return 0;
 
+	int current_player = PLAYER1;
+	char buf[64];
+
 	initscr();			// start curses mode 
 	getmaxyx(stdscr, height, width);// get screen size
 
@@ -144,16 +164,13 @@ main(int argc, char* argv[])
 	draw_score();
 
 	attron(A_BOLD);
-	move(0, 0);	printw("Player #%d %d %d %d", (player==PLAYER1)?1:2, player, PLAYER1, PLAYER2);
+	move(0, 0);	printw("Player #%d %s", (player==PLAYER1)?1:2, current_player==player?"your turn!":"please wait...");
 	attroff(A_BOLD);
 	attron(A_BOLD);
 	move(height-1, 0);	printw("Arrow keys: move; Space/Return: put; Q: quit");
 	attroff(A_BOLD);
 
 	refresh();
-
-	int current_player = PLAYER1;
-	char buf[64];
 
 	while(true) {			// main loop
 		int moved = 0;
@@ -166,10 +183,11 @@ main(int argc, char* argv[])
 			case 0x0a:
 			case KEY_ENTER:
 				if (current_player==player) {
-					update_board(cx, cy, player);
-					sprintf(buf, "c %d %d %d", cx, cy, player);
-					send(fd, buf, strlen(buf), 0);
-					current_player = -current_player;
+					if (update_board(cx, cy, player)) {
+						sprintf(buf, "c %d %d %d", cx, cy, player);
+						send(fd, buf, strlen(buf), 0);
+						current_player = -current_player;
+					}
 				}
 				moved++;
 				break;
