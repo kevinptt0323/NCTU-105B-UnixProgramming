@@ -112,6 +112,20 @@ bool update_board(int _cx, int _cy, int player) {
 	return true;
 }
 
+bool can_move(int player) {
+	for(int i=0; i<BOARDSZ; i++)
+		for(int j=0; j<BOARDSZ; j++)
+			if (validate(i, j, player)) return true;
+	return false;
+}
+
+void draw_player_line(int player, int current_player) {
+	attron(A_BOLD);
+	move(0, 0);
+	printw("Player #%d %-20s", (player==PLAYER1)?1:2, current_player==player?"your turn!":"please wait...");
+	attroff(A_BOLD);
+}
+
 int check_fd(int fd) {
 	fd_set read_fds;
 	FD_ZERO(&read_fds);
@@ -163,9 +177,7 @@ main(int argc, char* argv[])
 	draw_cursor(cx, cy, 1);
 	draw_score();
 
-	attron(A_BOLD);
-	move(0, 0);	printw("Player #%d %s", (player==PLAYER1)?1:2, current_player==player?"your turn!":"please wait...");
-	attroff(A_BOLD);
+	draw_player_line(player, current_player);
 	attron(A_BOLD);
 	move(height-1, 0);	printw("Arrow keys: move; Space/Return: put; Q: quit");
 	attroff(A_BOLD);
@@ -187,6 +199,8 @@ main(int argc, char* argv[])
 						sprintf(buf, "c %d %d %d", cx, cy, player);
 						send(fd, buf, strlen(buf), 0);
 						current_player = -current_player;
+						if (!can_move(current_player)) current_player = -current_player;
+						draw_player_line(player, current_player);
 					}
 				}
 				moved++;
@@ -234,6 +248,8 @@ main(int argc, char* argv[])
 				sscanf(buf, "%*s %d %d %d", &cx2, &cy2, &player2);
 				update_board(cx2, cy2, player2);
 				current_player = -current_player;
+				if (!can_move(current_player)) current_player = -current_player;
+				draw_player_line(player, current_player);
 				moved++;
 				break;
 			case 'q':
