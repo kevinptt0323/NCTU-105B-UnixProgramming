@@ -167,7 +167,7 @@ main(int argc, char* argv[])
 			case KEY_ENTER:
 				if (current_player==player) {
 					update_board(cx, cy, player);
-					sprintf(buf, "%d %d %d", cx, cy, player);
+					sprintf(buf, "c %d %d %d", cx, cy, player);
 					send(fd, buf, strlen(buf), 0);
 					current_player = -current_player;
 				}
@@ -175,6 +175,7 @@ main(int argc, char* argv[])
 				break;
 			case 'q':
 			case 'Q':
+				send(fd, "q", 1, 0);
 				goto quit;
 				break;
 			case 'k':
@@ -210,10 +211,16 @@ main(int argc, char* argv[])
 			int cx2, cy2, player2, len;
 			len = recv(fd, buf, 63, 0);
 			buf[len] = 0;
-			sscanf(buf, "%d %d %d", &cx2, &cy2, &player2);
-			update_board(cx2, cy2, player2);
-			current_player = -current_player;
-			moved++;
+			switch(buf[0]) {
+			case 'c':
+				sscanf(buf, "%*s %d %d %d", &cx2, &cy2, &player2);
+				update_board(cx2, cy2, player2);
+				current_player = -current_player;
+				moved++;
+				break;
+			case 'q':
+				goto quit;
+			}
 		}
 
 		if(moved) {
@@ -226,6 +233,7 @@ main(int argc, char* argv[])
 
 quit:
 	endwin();			// end curses mode
+	close(fd);
 
 	return 0;
 }
