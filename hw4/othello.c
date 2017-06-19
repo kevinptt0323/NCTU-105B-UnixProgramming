@@ -133,11 +133,11 @@ draw_score() {
 	move(box_top+3, box_left + 4*BOARDSZ + 10);
 	printw("Player #1 ");
 	addch(PLAYER1SYM|COLOR_PAIR(colorplayer1));
-	printw(" : %d", white);
+	printw(" : %-2d", white);
 	move(box_top+5, box_left + 4*BOARDSZ + 10);
 	printw("Player #2 ");
 	addch(PLAYER2SYM|COLOR_PAIR(colorplayer2));
-	printw(" : %d", black);
+	printw(" : %-2d", black);
 	attroff(A_BOLD);
 	return;
 }
