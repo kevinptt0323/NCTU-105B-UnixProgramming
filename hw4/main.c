@@ -184,7 +184,7 @@ main(int argc, char* argv[])
 
 	refresh();
 
-	while(true) {			// main loop
+	while(can_move(PLAYER1) || can_move(PLAYER2)) {			// main loop
 		int moved = 0;
 		if (check_fd(STDIN_FILENO)) {
 			int ch = getch();
@@ -267,6 +267,19 @@ main(int argc, char* argv[])
 
 quit:
 	endwin();			// end curses mode
+	if (!can_move(PLAYER1) && !can_move(PLAYER2)) {
+		int cnt1 = 0, cnt2 = 0;
+		for(int i=0; i<BOARDSZ; i++) {
+			for(int j=0; j<BOARDSZ; j++) {
+				if (board[i][j] == PLAYER1) cnt1++;
+				if (board[i][j] == PLAYER2) cnt2++;
+			}
+		}
+		if (cnt1!=cnt2)
+			fprintf(stdout, "player #%d win (%d:%d)\n", cnt1>cnt2?1:2, cnt1>cnt2?cnt1:cnt2, cnt1<cnt2?cnt1:cnt2);
+		else
+			fprintf(stdout, "tie\n");
+	}
 	close(fd);
 
 	return 0;
