@@ -91,13 +91,30 @@ void update_board(int _cx, int _cy, int player) {
 			}
 		}
 	}
+	draw_score();
+	draw_board();
+}
+
+int check_fd(int fd) {
+	fd_set read_fds;
+	FD_ZERO(&read_fds);
+	FD_SET(fd, &read_fds);
+
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+
+	if (select(fd+1, &read_fds, NULL, NULL, &tv) == -1) {
+		fprintf(stderr, "error select\n");
+	}
+	return FD_ISSET(fd, &read_fds);
 }
 
 int
 main(int argc, char* argv[])
 {	
+	int fd = 0, player;
 	if (argc!=3) return 0;
-	int fd, player;
 	if (strcmp(argv[1], "-s") == 0) {
 		fd = start_server(argv[2]);
 		player = PLAYER1;
@@ -106,9 +123,6 @@ main(int argc, char* argv[])
 		player = PLAYER2;
 	}
 	if (fd<0) return 0;
-	printf("%d\n", fd);
-
-	player = 0;
 
 	initscr();			// start curses mode 
 	getmaxyx(stdscr, height, width);// get screen size
@@ -122,70 +136,84 @@ main(int argc, char* argv[])
 
 	init_colors();
 
-restart:
 	clear();
 	cx = cy = 3;
 	init_board();
 	draw_board();
 	draw_cursor(cx, cy, 1);
 	draw_score();
-	refresh();
 
 	attron(A_BOLD);
-	move(height-1, 0);	printw("Arrow keys: move; Space: put GREEN; Return: put PURPLE; R: reset; Q: quit");
+	move(0, 0);	printw("Player #%d %d %d %d", (player==PLAYER1)?1:2, player, PLAYER1, PLAYER2);
+	attroff(A_BOLD);
+	attron(A_BOLD);
+	move(height-1, 0);	printw("Arrow keys: move; Space/Return: put; Q: quit");
 	attroff(A_BOLD);
 
-	while(true) {			// main loop
-		int ch = getch();
-		int moved = 0;
+	refresh();
 
-		switch(ch) {
-		case ' ':
-			update_board(cx, cy, PLAYER1);
-			draw_score();
-			break;
-		case 0x0d:
-		case 0x0a:
-		case KEY_ENTER:
-			update_board(cx, cy, PLAYER2);
-			draw_score();
-			break;
-		case 'q':
-		case 'Q':
-			goto quit;
-			break;
-		case 'r':
-		case 'R':
-			goto restart;
-			break;
-		case 'k':
-		case KEY_UP:
-			draw_cursor(cx, cy, 0);
-			cy = (cy-1+BOARDSZ) % BOARDSZ;
-			draw_cursor(cx, cy, 1);
+	int current_player = PLAYER1;
+	char buf[64];
+
+	while(true) {			// main loop
+		int moved = 0;
+		if (check_fd(STDIN_FILENO)) {
+			int ch = getch();
+
+			switch(ch) {
+			case ' ':
+			case 0x0d:
+			case 0x0a:
+			case KEY_ENTER:
+				if (current_player==player) {
+					update_board(cx, cy, player);
+					sprintf(buf, "%d %d %d", cx, cy, player);
+					send(fd, buf, strlen(buf), 0);
+					current_player = -current_player;
+				}
+				moved++;
+				break;
+			case 'q':
+			case 'Q':
+				goto quit;
+				break;
+			case 'k':
+			case KEY_UP:
+				draw_cursor(cx, cy, 0);
+				cy = (cy-1+BOARDSZ) % BOARDSZ;
+				draw_cursor(cx, cy, 1);
+				moved++;
+				break;
+			case 'j':
+			case KEY_DOWN:
+				draw_cursor(cx, cy, 0);
+				cy = (cy+1) % BOARDSZ;
+				draw_cursor(cx, cy, 1);
+				moved++;
+				break;
+			case 'h':
+			case KEY_LEFT:
+				draw_cursor(cx, cy, 0);
+				cx = (cx-1+BOARDSZ) % BOARDSZ;
+				draw_cursor(cx, cy, 1);
+				moved++;
+				break;
+			case 'l':
+			case KEY_RIGHT:
+				draw_cursor(cx, cy, 0);
+				cx = (cx+1) % BOARDSZ;
+				draw_cursor(cx, cy, 1);
+				moved++;
+				break;
+			}
+		} else if (check_fd(fd)) {
+			int cx2, cy2, player2, len;
+			len = recv(fd, buf, 63, 0);
+			buf[len] = 0;
+			sscanf(buf, "%d %d %d", &cx2, &cy2, &player2);
+			update_board(cx2, cy2, player2);
+			current_player = -current_player;
 			moved++;
-			break;
-		case 'j':
-		case KEY_DOWN:
-			draw_cursor(cx, cy, 0);
-			cy = (cy+1) % BOARDSZ;
-			draw_cursor(cx, cy, 1);
-			moved++;
-			break;
-		case 'h':
-		case KEY_LEFT:
-			draw_cursor(cx, cy, 0);
-			cx = (cx-1+BOARDSZ) % BOARDSZ;
-			draw_cursor(cx, cy, 1);
-			moved++;
-			break;
-		case 'l':
-		case KEY_RIGHT:
-			draw_cursor(cx, cy, 0);
-			cx = (cx+1) % BOARDSZ;
-			draw_cursor(cx, cy, 1);
-			moved++;
-			break;
 		}
 
 		if(moved) {
